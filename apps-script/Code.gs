@@ -126,13 +126,15 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   const action = p.action || '';
   if (SECRET === 'change-this-key-123') return json_({ ok: false, error: 'Set your own SECRET in Code.gs first' });
-  if (p.key !== SECRET) return json_({ ok: false, error: 'Wrong key' });
+  if (p.key !== SECRET) return p.fmt ? text_('Error: wrong key') : json_({ ok: false, error: 'Wrong key' });
 
   if (action === 'data') return json_(Object.assign({ ok: true }, getData_()));
-  if (action === 'lists') return json_(listsForShortcut_());
-  if (action === 'categories') return json_(categoriesForShortcut_(p.list || '', p.note || ''));
-  if (action === 'add') return json_(addFromShortcut_(p));
-  if (action === 'addtask') return json_(addTaskFromShortcut_(p));
+  // fmt=1 → Shortcut-friendly: lists come back as plain arrays, results as plain text
+  const f = !!p.fmt;
+  if (action === 'lists') { const r = listsForShortcut_(); return json_(f ? r.lists : r); }
+  if (action === 'categories') { const r = categoriesForShortcut_(p.list || '', p.note || ''); return json_(f ? r.categories : r); }
+  if (action === 'add') { const r = addFromShortcut_(p); return f ? text_(r.ok ? r.message : 'Error: ' + r.error) : json_(r); }
+  if (action === 'addtask') { const r = addTaskFromShortcut_(p); return f ? text_(r.ok ? r.message : 'Error: ' + r.error) : json_(r); }
   if (action === 'summary') return json_(summary_(resolveList_(p.list, readLists_())));
   return json_({ ok: true, app: 'left-tracker' });
 }
@@ -537,6 +539,10 @@ function normDate_(v) {
 
 function fmt_(n) {
   return Math.round(n).toString().replace(/(\d)(?=(\d\d)+\d$)/g, '$1,');
+}
+
+function text_(s) {
+  return ContentService.createTextOutput(String(s)).setMimeType(ContentService.MimeType.TEXT);
 }
 
 function json_(obj) {
