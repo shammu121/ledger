@@ -265,7 +265,8 @@
   <section class="screen on" id="s-home">
     <div class="top">
       <button class="list-pill" onclick="openListMenu()" id="listPill"></button>
-      <button class="icon-btn" onclick="openSettings()" aria-label="Settings">⚙︎</button>
+      <div style="display:flex;gap:8px"><button class="icon-btn" id="refBtn" onclick="refresh(true)" aria-label="Refresh">↻</button>
+      <button class="icon-btn" onclick="openSettings()" aria-label="Settings">⚙︎</button></div>
     </div>
     <div class="sub-nav" id="monthNav">
       <button class="arrow" onclick="shiftMonth(-1)" aria-label="Previous month">‹</button>
@@ -461,6 +462,7 @@ async function refresh(showBadge) {
   syncing = true;
   const badge = document.getElementById('sync');
   if (showBadge) badge.hidden = false;
+  const rb = document.getElementById('refBtn'); if (rb) rb.style.opacity = '.4';
   try {
     const r = await fetch(API + '?action=data&key=' + encodeURIComponent(KEY));
     const j = await r.json();
@@ -471,7 +473,7 @@ async function refresh(showBadge) {
     saveCache(); if (!document.querySelector('.sheet.on')) render();
   } catch (e) {
     if (showBadge) toast('Offline — showing saved data');
-  } finally { syncing = false; badge.hidden = true; }
+  } finally { syncing = false; badge.hidden = true; const rb = document.getElementById('refBtn'); if (rb) rb.style.opacity = ''; }
 }
 function lockApp(msg) {
   store('left.key', null); KEY = '';
@@ -487,7 +489,11 @@ async function unlock() {
     KEY = k; store('left.key', k); document.getElementById('lock').hidden = true; refresh(true);
   } catch (e) { document.getElementById('lockErr').textContent = 'No internet — try again'; }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { D.today = ds(new Date()); refresh(false); } });
+function wake() { if (!document.hidden) { D.today = ds(new Date()); refresh(false); } }
+document.addEventListener('visibilitychange', wake);
+window.addEventListener('focus', wake);
+window.addEventListener('pageshow', wake);
+setInterval(() => { if (!document.hidden) refresh(false); }, 30000);
 
 /* ───────── helpers ───────── */
 function pad(n) { return String(n).padStart(2,'0'); }
@@ -1332,7 +1338,7 @@ function demoServer(fn, args) {
 }
 
 render();
-if (!DEMO) { if (!KEY) lockApp(); else refresh(D._empty); }
+if (!DEMO) { if (!KEY) lockApp(); else refresh(true); }
 </script>
 </body>
 </html>
