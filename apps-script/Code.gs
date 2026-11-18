@@ -542,8 +542,8 @@ function fmt_(n) {
 }
 
 // Shortcuts cuts a link at the first normal space, so labels use no-break spaces (look identical)
-function nb_(s) { return String(s).replace(/ /g, '\u00a0').replace(/&/g, '\uff06'); }
-function un_(s) { return String(s || '').replace(/\u00a0/g, ' ').replace(/\uff06/g, '&').replace(/\+/g, ' '); }
+function nb_(s) { return String(s).replace(/ /g, '\u2800').replace(/&/g, '\uff06'); }
+function un_(s) { return String(s || '').replace(/[\u2800\u00a0]/g, ' ').replace(/\uff06/g, '&').replace(/\+/g, ' '); }
 
 function text_(s) {
   return ContentService.createTextOutput(String(s)).setMimeType(ContentService.MimeType.TEXT);
