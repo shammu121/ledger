@@ -133,7 +133,7 @@ function doGet(e) {
   const f = !!p.fmt;
   if (action === 'lists') { const r = listsForShortcut_(); return json_(f ? r.lists : r); }
   if (action === 'categories') { const r = categoriesForShortcut_(p.list || '', p.note || ''); return json_(f ? r.categories : r); }
-  if (action === 'add') { const r = addFromShortcut_(p); return f ? text_(r.ok ? r.message : 'Error: ' + r.error) : json_(r); }
+  if (action === 'add') { const r = addFromShortcut_(p); return f ? text_(r.ok ? r.message : 'Error: ' + r.error + '\nReceived → list: ' + (p.list || '(empty)') + ' | note: ' + (p.note || '(empty)') + ' | amount: ' + (p.amount || '(empty)') + ' | category: ' + (p.category || '(empty)') + '\nRaw: ' + (e.queryString || '').replace(/key=[^&]*/, 'key=***').slice(0, 300)) : json_(r); }
   if (action === 'addtask') { const r = addTaskFromShortcut_(p); return f ? text_(r.ok ? r.message : 'Error: ' + r.error) : json_(r); }
   if (action === 'summary') return json_(summary_(resolveList_(p.list, readLists_())));
   return json_({ ok: true, app: 'left-tracker' });
@@ -168,7 +168,7 @@ function doPost(e) {
 
 // Step 1 of the Shortcut: which list?
 function listsForShortcut_() {
-  return { ok: true, lists: readLists_().map(l => l.emoji + ' ' + l.name) };
+  return { ok: true, lists: readLists_().map(l => nb_(l.emoji + ' ' + l.name)) };
 }
 
 // Step 4 of the Shortcut: categories of that list, best guess for the note first.
@@ -177,7 +177,7 @@ function categoriesForShortcut_(listLabel, note) {
   const list = resolveList_(listLabel, lists);
   const cats = readCategories_().filter(c => c.list === list);
   const guess = note ? guessCategory_(note, list, readEntries_(), cats) : '';
-  const labels = cats.map(c => c.emoji + ' ' + c.name);
+  const labels = cats.map(c => nb_(c.emoji + ' ' + c.name));
   if (guess) {
     const i = cats.findIndex(c => c.name === guess);
     if (i > 0) { const g = labels.splice(i, 1)[0]; labels.unshift(g); }
@@ -444,7 +444,7 @@ function readCategories_() {
 
 // Accepts "Personal", "🙂 Personal", "personal" — falls back to the first list
 function resolveList_(value, lists) {
-  const v = String(value || '').trim().toLowerCase();
+  const v = un_(value).trim().toLowerCase();
   const hit = v && (lists.find(l => l.name.toLowerCase() === v || (l.emoji + ' ' + l.name).toLowerCase() === v)
     || lists.find(l => v.endsWith(l.name.toLowerCase())));
   return hit ? hit.name : (lists[0] ? lists[0].name : 'Personal');
@@ -452,7 +452,7 @@ function resolveList_(value, lists) {
 
 // Accepts "Food", "🍽️ Food", "food"
 function resolveCategory_(value, cats) {
-  const v = String(value || '').trim().toLowerCase();
+  const v = un_(value).trim().toLowerCase();
   if (!v) return '';
   const hit = cats.find(c => c.name.toLowerCase() === v || (c.emoji + ' ' + c.name).toLowerCase() === v)
     || cats.find(c => v.endsWith(c.name.toLowerCase()));
@@ -540,6 +540,10 @@ function normDate_(v) {
 function fmt_(n) {
   return Math.round(n).toString().replace(/(\d)(?=(\d\d)+\d$)/g, '$1,');
 }
+
+// Shortcuts cuts a link at the first normal space, so labels use no-break spaces (look identical)
+function nb_(s) { return String(s).replace(/ /g, '\u00a0').replace(/&/g, '\uff06'); }
+function un_(s) { return String(s || '').replace(/\u00a0/g, ' ').replace(/\uff06/g, '&').replace(/\+/g, ' '); }
 
 function text_(s) {
   return ContentService.createTextOutput(String(s)).setMimeType(ContentService.MimeType.TEXT);
